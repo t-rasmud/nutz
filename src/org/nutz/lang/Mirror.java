@@ -36,7 +36,6 @@ import org.nutz.lang.util.Callback;
 import org.nutz.lang.util.Callback3;
 
 /**
- * 包裹了 Class<?>， 提供了更多的反射方法
  * 
  * @author zozoh(zozohtnt@gmail.com)
  * 
@@ -50,33 +49,25 @@ public class Mirror<T> {
             Class<?> theType = mirror.getType();
             List<Class<?>> re = new ArrayList<Class<?>>(5);
 
-            // 原生类型，增加其外覆类
             if (theType.isPrimitive()) {
                 re.add(mirror.getWrapperClass());
-                // 数字
                 if (theType != boolean.class && theType != char.class) {
                     re.add(Number.class);
                 }
             }
-            // 日历
             else if (mirror.isOf(Calendar.class)) {
                 re.add(Calendar.class);
             }
-            // 其他类型，直接增加，并试图判断其抽象类
             else {
                 re.add(theType);
-                // 枚举
                 if (mirror.klass.isEnum()) {
                     re.add(Enum.class);
                 }
-                // 数组
                 else if (mirror.klass.isArray()) {
                     re.add(Array.class);
                 }
-                // 字符串
                 else if (mirror.isStringLike())
                     re.add(CharSequence.class);
-                // 数字
                 else if (mirror.isNumber()) {
                     re.add(Number.class);
                 }
@@ -84,17 +75,14 @@ public class Mirror<T> {
                 else if (mirror.isOf(Map.class)) {
                     re.add(Map.class);
                 }
-                // 列表
                 else if (mirror.isOf(List.class)) {
                     re.add(List.class);
                     re.add(Collection.class);
                 }
-                // 集合
                 else if (mirror.isOf(Collection.class)) {
                     re.add(Collection.class);
                 }
             }
-            // 最后确保 Object 一定被加上了
             if (theType != Object.class)
                 re.add(Object.class);
 
@@ -106,10 +94,8 @@ public class Mirror<T> {
     private final static DefaultTypeExtractor defaultTypeExtractor = new DefaultTypeExtractor();
 
     /**
-     * 包裹一个类
      * 
      * @param classOfT
-     *            类
      * @return Mirror
      */
     public static <T> Mirror<T> me(Class<T> classOfT) {
@@ -118,11 +104,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 生成一个对象的 Mirror
      * 
      * @param obj
-     *            对象。
-     * @return Mirror， 如果 对象 null，则返回 null
      */
     @SuppressWarnings("unchecked")
     public static <T> Mirror<T> me(T obj) {
@@ -134,7 +117,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 包裹一个类，并设置自定义的类型提炼逻辑
      * 
      * @param classOfT
      * @param typeExtractor
@@ -148,8 +130,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据Type生成Mirror, 如果type是 {@link ParameterizedType} 类型的对象<br>
-     * 可以使用 getGenericsTypes() 方法取得它的泛型数组
      */
     @SuppressWarnings({"unchecked"})
     public static <T> Mirror<T> me(Type type) {
@@ -168,7 +148,6 @@ public class Mirror<T> {
     private TypeExtractor typeExtractor;
 
     /**
-     * 设置自己的类型提炼逻辑
      * 
      * @param typeExtractor
      * @return Mirror
@@ -184,31 +163,21 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据名称获取一个 Getter。
      * <p>
-     * 比如，你想获取 abc 的 getter ，那么优先查找 getAbc()，如果没有则查找isAbc()，最后才是查找 abc()。
      * 
      * @param fieldName
-     * @return 方法
      * @throws NoSuchMethodException
-     *             没有找到 Getter
      */
     public Method getGetter(String fieldName) throws NoSuchMethodException {
         return getGetter(fieldName, null);
     }
 
     /**
-     * 根据名称和返回值获取一个 Getter。
      * <p>
-     * 比如，你想获取 abc 的 getter ，那么优先查找 getAbc()，如果没有则查找isAbc()，最后才是查找 abc()。
      * 
      * @param fieldName
-     *            字段名
      * @param returnType
-     *            返回值
-     * @return 方法
      * @throws NoSuchMethodException
-     *             没有找到 Getter
      */
     public Method getGetter(String fieldName, Class<?> returnType) throws NoSuchMethodException {
         String fn = Strings.upperFirst(fieldName);
@@ -221,15 +190,13 @@ public class Mirror<T> {
 
             Class<?> mrt = method.getReturnType();
 
-            // 必须有返回类型
             if (null == mrt)
                 continue;
 
-            // 如果给了返回类型，用它判断一下
             if (null != returnType && !returnType.equals(mrt))
                 continue;
 
-            if (!method.isAccessible()) // 有些时候,即使是public的方法,也不一定能访问
+            if (!method.isAccessible())
                 method.setAccessible(true);
 
             if (_get.equals(method.getName()))
@@ -255,42 +222,27 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据字段获取一个 Getter。
      * <p>
-     * 比如，你想获取 abc 的 getter ，那么优先查找 getAbc()，如果 没有，则查找 abc()。
      * 
      * @param field
-     * @return 方法
      * @throws NoSuchMethodException
-     *             没有找到 Getter
      */
     public Method getGetter(Field field) throws NoSuchMethodException {
         return getGetter(field.getName(), field.getType());
     }
 
     /**
-     * 根据给定的一个方法，判断其是 Getter 还是 Setter
      * <p>
-     * 对于回调会接受三个参数
      * 
      * <pre>
-     * callback(虚字段名, getter, setter)
      * </pre>
      * 
-     * 回调都会给一个参数，表示这个方法对应的虚拟字段名。所谓"虚拟字段"，就比如
      * <ul>
-     * <li>如果是 setAbc : 那么就是 "abc"
-     * <li>如果是 getAbc : 那么就是 "abc"
-     * <li>如果是 isAbc : 那么就是 "abc"
      * </ul>
-     * 而 getter 或者 setter 参数如果为 null，则表示本函数未发现对应的 getter|setter
      * 
      * @param method
-     *            方法对象
      * @param callback
-     *            回调, 如果为 null，则无视
      * @param whenError
-     *            如果本方法即不是 Getter 也不是 Setter 的回调, 如果为 null，则无视
      */
     public static void evalGetterSetter(Method method,
                                         Callback3<String, Method, Method> callback,
@@ -299,11 +251,9 @@ public class Mirror<T> {
         Method getter = null;
         Method setter = null;
 
-        // 是 getter
         if (name.startsWith("get") && method.getParameterTypes().length == 0) {
             name = Strings.lowerFirst(name.substring(3));
             getter = method;
-            // 寻找 setter
             try {
                 setter = method.getDeclaringClass().getMethod("set"
                                                               + Strings.upperFirst(name),
@@ -312,13 +262,11 @@ public class Mirror<T> {
             catch (Exception e) {}
 
         }
-        // 布尔的 getter
         else if (name.startsWith("is")
                  && Mirror.me(method.getReturnType()).isBoolean()
                  && method.getParameterTypes().length == 0) {
             name = Strings.lowerFirst(name.substring(2));
             getter = method;
-            // 寻找 setter
             try {
                 setter = method.getDeclaringClass().getMethod("set"
                                                               + Strings.upperFirst(name),
@@ -326,38 +274,29 @@ public class Mirror<T> {
             }
             catch (Exception e) {}
         }
-        // 是 setter
         else if (name.startsWith("set") && method.getParameterTypes().length == 1) {
             name = Strings.lowerFirst(name.substring(3));
             setter = method;
-            // 寻找 getter
             try {
                 getter = method.getDeclaringClass().getMethod("get" + Strings.upperFirst(name));
             }
             catch (Exception e) {}
 
         }
-        // 虾米都不是，错!
         else {
             if (null != whenError)
                 whenError.invoke(method);
             return;
         }
-        // 最后调用回调
         if (null != callback)
             callback.invoke(name, getter, setter);
     }
 
     /**
-     * 根据给定的一个方法，判断其是 Getter 还是 Setter，根据情况不同，调用不同的回调。
      * 
      * @param method
-     *            方法对象
      * @param errmsgFormat
-     *            如果本方法即不是 Getter 也不是 Setter 的回调, 则根据这个消息模板抛出一个运行时异常。 这个字符串格式是个
-     *            Java 的字符串模板，接受两个参数，第一个是方法名，第二个是所在类名
      * @param callback
-     *            回调, 如果为 null，则无视
      */
     public static void evalGetterSetter(final Method method,
                                         final String errmsgFormat,
@@ -372,30 +311,20 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据一个字段获取 Setter
      * <p>
-     * 比如，你想获取 abc 的 setter ，那么优先查找 setAbc(T abc)，如果 没有，则查找 abc(T abc)。
      * 
      * @param field
-     *            字段
-     * @return 方法
      * @throws NoSuchMethodException
-     *             没找到 Setter
      */
     public Method getSetter(Field field) throws NoSuchMethodException {
         return getSetter(field.getName(), field.getType());
     }
 
     /**
-     * 根据一个字段名和字段类型获取 Setter
      * 
      * @param fieldName
-     *            字段名
      * @param paramType
-     *            字段类型
-     * @return 方法
      * @throws NoSuchMethodException
-     *             没找到 Setter
      */
     public Method getSetter(String fieldName, Class<?> paramType) throws NoSuchMethodException {
         try {
@@ -418,7 +347,6 @@ public class Mirror<T> {
                                     return method;
                             }
                     }
-                    // 还是没有? 会不会是包装类型啊?
                     if (!paramType.isPrimitive()) {
                         Class<?> p = unWrapper();
                         if (null != p)
@@ -438,10 +366,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据一个字段名，获取一组有可能成为 Setter 函数
      * 
      * @param fieldName
-     * @return 函数数组
      */
     public Method[] findSetters(String fieldName) {
         String mName = "set" + Strings.upperFirst(fieldName);
@@ -456,11 +382,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取一个字段。这个字段可以是当前类型或者其父类的私有字段。
      * 
      * @param name
-     *            字段名
-     * @return 字段
      * @throws NoSuchFieldException
      */
     public Field getField(String name) throws NoSuchFieldException {
@@ -479,11 +402,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取一个字段。这个字段必须声明特殊的注解，第一遇到的对象会被返回
      * 
      * @param ann
-     *            注解
-     * @return 字段
      * @throws NoSuchFieldException
      */
     public <AT extends Annotation> Field getField(Class<AT> ann) throws NoSuchFieldException {
@@ -497,11 +417,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取一组声明了特殊注解的字段
      * 
      * @param ann
-     *            注解类型
-     * @return 字段数组
      */
     public <AT extends Annotation> Field[] getFields(Class<AT> ann) {
         List<Field> fields = new LinkedList<Field>();
@@ -513,22 +430,16 @@ public class Mirror<T> {
     }
 
     /**
-     * 获得当前类以及所有父类的所有的属性，包括私有属性。 <br>
-     * 但是父类不包括 Object 类，并且，如果子类的属性如果与父类重名，将会将其覆盖
      * 
-     * @return 属性列表
      */
     public Field[] getFields() {
         return _getFields(true, false, true, true);
     }
 
     /**
-     * 获得所有的静态变量属性
      * 
      * @param noFinal
-     *            是否包括 final 修饰符的字段
      * 
-     * @return 字段列表
      */
     public Field[] getStaticField(boolean noFinal) {
         return _getFields(false, true, noFinal, true);
@@ -564,13 +475,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 向父类递归查找某一个运行时注解
      * 
      * @param <A>
-     *            注解类型参数
      * @param annType
-     *            注解类型
-     * @return 注解
      */
     public <A extends Annotation> A getAnnotation(Class<A> annType) {
         Class<?> cc = klass;
@@ -583,7 +490,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 取得当前类型的泛型数组
      */
     public Type[] getGenericsTypes() {
         if (type instanceof ParameterizedType) {
@@ -593,7 +499,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 取得当前类型的指定泛型
      */
     public Type getGenericsType(int index) {
         Type[] ts = getGenericsTypes();
@@ -601,7 +506,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取本类型所有的方法，包括私有方法。不包括 Object 的方法
      */
     public Method[] getMethods() {
         Class<?> cc = klass;
@@ -617,13 +521,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取当前对象，所有的方法，包括私有方法。递归查找至自己某一个父类为止 。
      * <p>
-     * 并且这个按照名称，消除重复的方法。子类方法优先
      * 
      * @param top
-     *            截至的父类
-     * @return 方法数组
      */
     public Method[] getAllDeclaredMethods(Class<?> top) {
         Class<?> cc = klass;
@@ -641,16 +541,13 @@ public class Mirror<T> {
     }
 
     /**
-     * 相当于 getAllDeclaredMethods(Object.class)
      * 
-     * @return 方法数组
      */
     public Method[] getAllDeclaredMethodsWithoutTop() {
         return getAllDeclaredMethods(Object.class);
     }
 
     /**
-     * @return 所有静态方法
      */
     public Method[] getStaticMethods() {
         List<Method> list = new LinkedList<Method>();
@@ -677,21 +574,16 @@ public class Mirror<T> {
     }
 
     /**
-     * 为对象的一个字段设值。 优先调用对象的 setter，如果没有，直接设置字段的值
      * 
      * @param obj
-     *            对象
      * @param field
-     *            字段
      * @param value
-     *            值。如果为 null，字符和数字字段，都会设成 0
      * @throws FailToSetValueException
      */
     public void setValue(Object obj, Field field, Object value) throws FailToSetValueException {
         if (!field.isAccessible())
             field.setAccessible(true);
         Class<?> ft = field.getType();
-        // 非 null 值，进行转换
         if (null != value) {
             if (!field.getType().isAssignableFrom(value.getClass()))
                 try {
@@ -701,7 +593,6 @@ public class Mirror<T> {
                     throw makeSetValueException(obj.getClass(), field.getName(), value, e);
                 }
         }
-        // 如果是原生类型，转换成默认值
         else if (ft.isPrimitive()) {
             if (boolean.class == ft) {
                 value = false;
@@ -725,14 +616,10 @@ public class Mirror<T> {
     }
 
     /**
-     * 为对象的一个字段设值。优先调用 setter 方法。
      * 
      * @param obj
-     *            对象
      * @param fieldName
-     *            字段名
      * @param value
-     *            值
      * @throws FailToSetValueException
      */
     public void setValue(Object obj, String fieldName, Object value)
@@ -767,13 +654,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 不调用 getter，直接获得字段的值
      * 
      * @param obj
-     *            对象
      * @param f
-     *            字段
-     * @return 字段的值。
      * @throws FailToGetValueException
      */
     public Object getValue(Object obj, Field f) throws FailToGetValueException {
@@ -788,15 +671,10 @@ public class Mirror<T> {
     }
 
     /**
-     * 优先通过 getter 获取字段值，如果没有，则直接获取字段值
      * 
      * @param obj
-     *            对象
      * @param name
-     *            字段名
-     * @return 字段值
      * @throws FailToGetValueException
-     *             既没发现 getter，又没有字段
      */
     @SuppressWarnings("rawtypes")
     public Object getValue(Object obj, String name) throws FailToGetValueException {
@@ -829,7 +707,6 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 对象类型
      */
     public Class<T> getType() {
         return klass;
@@ -838,7 +715,6 @@ public class Mirror<T> {
     private String _type_id;
 
     /**
-     * @return 本类型的唯一标识名称
      */
     public String getTypeId() {
         if (null == _type_id) {
@@ -850,7 +726,6 @@ public class Mirror<T> {
                 }
                 _type_id = String.format("%s<%s>", klass.getName(), Lang.concat(",", list));
             }
-            // TODO 这里应该作一些更多的判断
             else {
                 _type_id = klass.getName();
             }
@@ -860,24 +735,20 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 本类型真实的类型（保留了范型信息）
      */
     public Type getActuallyType() {
         return type == null ? klass : type;
     }
 
     /**
-     * @return 对象提炼类型数组。从对象自身的类型到 Object，中间的继承关系中最有特点的几个类型
      */
     public Class<?>[] extractTypes() {
         return typeExtractor.extract(this);
     }
 
     /**
-     * @return 获得外覆类
      * 
      * @throws RuntimeException
-     *             如果当前类型不是原生类型，则抛出
      */
     public Class<?> getWrapperClass() {
         if (!klass.isPrimitive()) {
@@ -887,7 +758,6 @@ public class Mirror<T> {
                 return klass;
             throw Lang.makeThrow("Class '%s' should be a primitive class", klass.getName());
         }
-        // TODO 用散列能快一点
         if (is(int.class))
             return Integer.class;
         if (is(char.class))
@@ -909,7 +779,6 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 获得外覆类，如果没有外覆类，则返回自身的类型
      */
     public Class<?> getWrapper() {
         if (klass.isPrimitive())
@@ -918,7 +787,6 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 如果当前类为内部类，则返回其外部类。否则返回 null
      */
     public Class<?> getOuterClass() {
         if (Modifier.isStatic(klass.getModifiers()))
@@ -937,14 +805,10 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取对象构建器
      * 
      * @param args
-     *            构造函数参数
-     * @return 当前对象的构建方式。
      * 
      * @throws BorningException
-     *             当没有发现合适的 Borning 时抛出
      * 
      * @see org.nutz.lang.born.Borning
      */
@@ -957,14 +821,10 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取对象构建器
      * 
      * @param argTypes
-     *            构造函数参数类型数组
-     * @return 当前对象构建方式
      * 
      * @throws BorningException
-     *             当没有发现合适的 Borning 时抛出
      * @throws NullPointerException
      *             when args is null
      */
@@ -976,11 +836,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据构造函数参数，创建一个对象。
      * 
      * @param args
-     *            构造函数参数
-     * @return 新对象
      */
     public T born(Object... args) {
         BornContext<T> bc = Borns.eval(klass, args);
@@ -1011,24 +868,17 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据函数名称和参数，返回一个函数调用方式
      * 
      * @param methodName
-     *            函数名
      * @param args
-     *            参数
-     * @return 函数调用方式
      */
     public Invoking getInvoking(String methodName, Object... args) {
         return new Invoking(klass, methodName, args);
     }
 
     /**
-     * 根据字段名，得出一个字段注入方式。优先用 Setter
      * 
      * @param fieldName
-     *            字段名
-     * @return 注入方式。
      */
     public Injecting getInjecting(String fieldName) {
         Method[] sss = this.findSetters(fieldName);
@@ -1050,11 +900,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据字段名获得一个字段输入方式。优先用 Getter
      * 
      * @param fieldName
-     *            字段名
-     * @return 输出方式
      */
     public Ejecting getEjecting(String fieldName) {
         return getEjecting(fieldName, null);
@@ -1086,28 +933,19 @@ public class Mirror<T> {
     }
 
     /**
-     * 调用对象的一个方法
      * 
      * @param obj
-     *            对象
      * @param methodName
-     *            方法名
      * @param args
-     *            参数
-     * @return 调用结果
      */
     public Object invoke(Object obj, String methodName, Object... args) {
         return getInvoking(methodName, args).invoke(obj);
     }
 
     /**
-     * 根据一组参数样例，获取一个合理的调用方法
      * 
      * @param name
-     *            方法名
      * @param args
-     *            参数样例
-     * @return 符合条件的方法
      */
     public Method findMethod(String name, Object[] args) throws NoSuchMethodException {
         if (null == args || args.length == 0)
@@ -1119,14 +957,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 查找一个方法。匹配的很宽泛
      * 
      * @param name
-     *            方法名
      * @param paramTypes
-     *            参数类型列表
-     * @return 方法
-     * @throws NoSuchMethodException 找不到合适方法时抛出
      */
     public Method findMethod(String name, Class<?>... paramTypes) throws NoSuchMethodException {
         try {
@@ -1139,7 +972,6 @@ public class Mirror<T> {
                         return m;
             }
         }
-        // TODO 与Borns的代码有重叠
         Method[] sms = getMethods();
         OUT: for (Method m : sms) {
             if (!m.getName().equals(name))
@@ -1163,13 +995,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据名称和参数个数，查找一组方法
      * 
      * @param name
-     *            方法名
      * @param argNumber
-     *            参数个数
-     * @return 方法数组
      */
     public Method[] findMethods(String name, int argNumber) {
         List<Method> methods = new LinkedList<Method>();
@@ -1183,14 +1011,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据返回值类型，以及参数类型，查找第一个匹配的方法
      * 
      * @param returnType
-     *            返回值类型
      * @param paramTypes
-     *            参数个数
-     * @return 方法
-     * @throws NoSuchMethodException 找不到合适的方法时抛出
      */
     public Method findMethod(Class<?> returnType, Class<?>... paramTypes)
             throws NoSuchMethodException {
@@ -1216,13 +1039,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 一个方法的参数类型同一个给定的参数数组是否可以匹配
      * 
      * @param methodParamTypes
-     *            参数类型列表
      * @param args
-     *            参数
-     * @return 匹配类型
      * 
      * @see org.nutz.lang.MatchType
      */
@@ -1231,11 +1050,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 将一组对象，变成一组类型
      * 
      * @param args
-     *            对象数组
-     * @return 类型数组
      */
     public static Class<?>[] evalToTypes(Object... args) {
         Class<?>[] types = new Class[args.length];
@@ -1251,11 +1067,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 将一个 Object[] 数组，变成一个真正的数组 T[]
      * 
      * @param args
-     *            数组
-     * @return 新数组,如果数组中包括了 null，或者数组的类型不一致，则返回旧数组
      */
     public static Object evalArgToRealArray(Object... args) {
         if (null == args || args.length == 0 || null == args[0])
@@ -1293,13 +1106,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 匹配一个函数声明的参数类型数组和一个调用参数数组
      * 
      * @param paramTypes
-     *            函数声明参数数组
      * @param argTypes
-     *            调用参数数组
-     * @return 匹配类型
      * 
      * @see org.nutz.lang.MatchType
      */
@@ -1324,22 +1133,16 @@ public class Mirror<T> {
     }
 
     /**
-     * 判断当前对象是否为一个类型。精确匹配，即使是父类和接口，也不相等
      * 
      * @param type
-     *            类型
-     * @return 是否相等
      */
     public boolean is(Class<?> type) {
         return null != type && klass == type;
     }
 
     /**
-     * 判断当前对象是否为一个类型。精确匹配，即使是父类和接口，也不相等
      * 
      * @param className
-     *            类型名称
-     * @return 是否相等
      */
     public boolean is(String className) {
         return klass.getName().equals(className);
@@ -1347,29 +1150,24 @@ public class Mirror<T> {
 
     /**
      * @param type
-     *            类型或接口名
-     * @return 当前对象是否为一个类型的子类，或者一个接口的实现类
      */
     public boolean isOf(Class<?> type) {
         return type.isAssignableFrom(klass);
     }
 
     /**
-     * @return 当前对象是否为字符串
      */
     public boolean isString() {
         return is(String.class);
     }
 
     /**
-     * @return 当前对象是否为CharSequence的子类
      */
     public boolean isStringLike() {
         return CharSequence.class.isAssignableFrom(klass);
     }
 
     /**
-     * @return 当前对象是否简单的数值，比如字符串，布尔，字符，数字，日期时间等
      */
     public boolean isSimple() {
         return isStringLike()
@@ -1381,84 +1179,72 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 当前对象是否为字符
      */
     public boolean isChar() {
         return is(char.class) || is(Character.class);
     }
 
     /**
-     * @return 当前对象是否为枚举
      */
     public boolean isEnum() {
         return klass.isEnum();
     }
 
     /**
-     * @return 当前对象是否为布尔
      */
     public boolean isBoolean() {
         return is(boolean.class) || is(Boolean.class);
     }
 
     /**
-     * @return 当前对象是否为浮点
      */
     public boolean isFloat() {
         return is(float.class) || is(Float.class);
     }
 
     /**
-     * @return 当前对象是否为双精度浮点
      */
     public boolean isDouble() {
         return is(double.class) || is(Double.class);
     }
 
     /**
-     * @return 当前对象是否为整型
      */
     public boolean isInt() {
         return is(int.class) || is(Integer.class);
     }
 
     /**
-     * @return 当前对象是否为整数（包括 int, long, short, byte）
      */
     public boolean isIntLike() {
         return isInt() || isLong() || isShort() || isByte() || is(BigDecimal.class);
     }
 
     /**
-     * @return 当前类型是不是接口
      */
     public boolean isInterface() {
         return klass.isInterface();
     }
 
     /**
-     * @return 当前对象是否为小数 (float, dobule)
      */
     public boolean isDecimal() {
         return isFloat() || isDouble();
     }
 
     /**
-     * @return 当前对象是否为长整型
      */
     public boolean isLong() {
         return is(long.class) || is(Long.class);
     }
 
     /**
-     * @return 当前对象是否为短整型
      */
     public boolean isShort() {
         return is(short.class) || is(Short.class);
     }
 
     /**
-     * @return 当前对象是否为字节型
      */
     public boolean isByte() {
         return is(byte.class) || is(Byte.class);
@@ -1466,8 +1252,6 @@ public class Mirror<T> {
 
     /**
      * @param type
-     *            类型
-     * @return 否为一个对象的外覆类
      */
     public boolean isWrapperOf(Class<?> type) {
         try {
@@ -1479,8 +1263,6 @@ public class Mirror<T> {
 
     /**
      * @param type
-     *            目标类型
-     * @return 判断当前对象是否能直接转换到目标类型，而不产生异常
      */
     public boolean canCastToDirectly(Class<?> type) {
         if (klass == type || type.isAssignableFrom(klass))
@@ -1497,14 +1279,12 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 当前对象是否为原生的数字类型 （即不包括 boolean 和 char）
      */
     public boolean isPrimitiveNumber() {
         return isInt() || isLong() || isFloat() || isDouble() || isByte() || isShort();
     }
 
     /**
-     * 如果不是容器，也不是 POJO，那么它必然是个 Obj
      * 
      * @return true or false
      */
@@ -1513,12 +1293,7 @@ public class Mirror<T> {
     }
 
     /**
-     * 判断当前类型是否为POJO。 除了下面的类型，其他均为 POJO
      * <ul>
-     * <li>原生以及所有包裹类
-     * <li>类字符串
-     * <li>类日期
-     * <li>非容器
      * </ul>
      * 
      * @return true or false
@@ -1537,7 +1312,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 判断当前类型是否为容器，包括 Map，Collection, 以及数组
      * 
      * @return true of false
      */
@@ -1546,7 +1320,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 判断当前类型是否为数组
      * 
      * @return true of false
      */
@@ -1555,7 +1328,6 @@ public class Mirror<T> {
     }
 
     /**
-     * 判断当前类型是否为 Collection
      * 
      * @return true of false
      */
@@ -1564,14 +1336,12 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 当前类型是否是数组或者集合
      */
     public boolean isColl() {
         return isArray() || isCollection();
     }
 
     /**
-     * 判断当前类型是否为 Map
      * 
      * @return true of false
      */
@@ -1580,7 +1350,6 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 当前对象是否为数字
      */
     public boolean isNumber() {
         return Number.class.isAssignableFrom(klass)
@@ -1588,7 +1357,6 @@ public class Mirror<T> {
     }
 
     /**
-     * @return 当前对象是否在表示日期或时间
      */
     public boolean isDateTimeLike() {
         return Calendar.class.isAssignableFrom(klass)
@@ -1602,29 +1370,22 @@ public class Mirror<T> {
     }
 
     /**
-     * 根据函数参数类型数组的最后一个类型（一定是数组，表示变参），为最后一个变参生成一个空数组
      * 
      * @param pts
-     *            函数参数类型列表
-     * @return 变参空数组
      */
     public static Object blankArrayArg(Class<?>[] pts) {
         return Array.newInstance(pts[pts.length - 1].getComponentType(), 0);
     }
 
     /**
-     * 获取一个类的泛型参数数组，如果这个类没有泛型参数，返回 null
      */
     public static Type[] getTypeParams(Class<?> klass) {
-        // TODO 这个实现会导致泛型丢失,只能取得申明类型
         if (klass == null || "java.lang.Object".equals(klass.getName()))
             return null;
-        // 看看父类
         Type superclass = klass.getGenericSuperclass();
         if (null != superclass && superclass instanceof ParameterizedType)
             return ((ParameterizedType) superclass).getActualTypeArguments();
 
-        // 看看接口
         Type[] interfaces = klass.getGenericInterfaces();
         for (Type inf : interfaces) {
             if (inf instanceof ParameterizedType) {
@@ -1637,11 +1398,8 @@ public class Mirror<T> {
     private static final Pattern PTN = Pattern.compile("(<)(.+)(>)");
 
     /**
-     * 获取一个字段的泛型参数数组，如果这个字段没有泛型，返回空数组
      * 
      * @param f
-     *            字段
-     * @return 泛型参数数组
      */
     public static Class<?>[] getGenericTypes(Field f) {
         String gts = f.toGenericString();
@@ -1675,11 +1433,8 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取一个字段的某一个泛型参数，如果没有，返回 null
      * 
      * @param f
-     *            字段
-     * @return 泛型参数数
      */
     public static Class<?> getGenericTypes(Field f, int index) {
         Class<?>[] types = getGenericTypes(f);
@@ -1689,13 +1444,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 获取一个类的某个一个泛型参数
      * 
      * @param klass
-     *            类
      * @param index
-     *            参数下标 （从 0 开始）
-     * @return 泛型参数类型
      */
     @SuppressWarnings("unchecked")
     public static <T> Class<T> getTypeParam(Class<?> klass, int index) {
@@ -1714,8 +1465,6 @@ public class Mirror<T> {
 
     /**
      * @param klass
-     *            类型
-     * @return 一个类型的包路径
      */
     public static String getPath(Class<?> klass) {
         return klass.getName().replace('.', '/');
@@ -1723,8 +1472,6 @@ public class Mirror<T> {
 
     /**
      * @param parameterTypes
-     *            函数的参数类型数组
-     * @return 参数的描述符
      */
     public static String getParamDescriptor(Class<?>[] parameterTypes) {
         StringBuilder sb = new StringBuilder();
@@ -1737,8 +1484,6 @@ public class Mirror<T> {
 
     /**
      * @param method
-     *            方法
-     * @return 这个方法的描述符
      */
     public static String getMethodDescriptor(Method method) {
         return getParamDescriptor(method.getParameterTypes())
@@ -1747,8 +1492,6 @@ public class Mirror<T> {
 
     /**
      * @param c
-     *            构造函数
-     * @return 构造函数的描述符
      */
     public static String getConstructorDescriptor(Constructor<?> c) {
         return getParamDescriptor(c.getParameterTypes()) + "V";
@@ -1756,8 +1499,6 @@ public class Mirror<T> {
 
     /**
      * @param klass
-     *            类型
-     * @return 获得一个类型的描述符
      */
     public static String getTypeDescriptor(Class<?> klass) {
         if (klass.isPrimitive()) {
@@ -1789,13 +1530,9 @@ public class Mirror<T> {
     }
 
     /**
-     * 查找包含某一个特殊注解的字段
      * 
      * @param type
-     *            类型
      * @param ann
-     *            注解类型
-     * @return 字段，null 表示没有找到
      */
     public static Field findField(Class<?> type, Class<? extends Annotation> ann) {
         Mirror<?> mirror = Mirror.me(type);
@@ -1827,8 +1564,6 @@ public class Mirror<T> {
      * 
      * 
      * @param clzInterface
-     *            接口clz
-     * @return 判断是否实现某个接口
      */
     public boolean hasInterface(Class<?> clzInterface) {
         Class<?>[] interfaces = klass.getInterfaces();
